@@ -10,6 +10,7 @@
 #include <getopt.h>
 #include <libgen.h>
 #include "cuda.h"
+#include <vector>
 
 #if NCCL_MAJOR >= 2
 ncclDataType_t test_types[ncclNumTypes] = {ncclInt8, ncclUint8, ncclInt32, ncclUint32, ncclInt64, ncclUint64, ncclHalf, ncclFloat, ncclDouble};
@@ -394,6 +395,27 @@ testResult_t completeColl(struct threadArgs* args) {
   return testSuccess;
 }
 
+void fakeLog(std::vector<std::pair<float, int>>& log) {
+  // put some fake logs
+  log.push_back(std::make_pair(0.0, 4000));
+  log.push_back(std::make_pair(10.0, 8192000));
+  
+  log.push_back(std::make_pair(0.0, 4000));
+  log.push_back(std::make_pair(15.0, 8192000)); 
+
+  log.push_back(std::make_pair(0.0, 4000));
+  log.push_back(std::make_pair(20.0, 8192000));
+}
+
+void mimicBackward(float interval, 
+                    std::chrono::time_point<std::chrono::high_resolution_clock>& start) {
+  // sleep in microseconds
+  while (1) {
+    std::chrono::duration<double, std::micro> dur = std::chrono::high_resolution_clock::now() - start;
+    if (dur.count() > interval) break;
+  }
+}
+
 testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t op, int root, int in_place) {
   size_t count = args->nbytes / wordSize(type);
 
@@ -404,15 +426,41 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
   // Barrier(args);
 
   // Performance Benchmark
+  // auto start = std::chrono::high_resolution_clock::now();
+  // for (int iter = 0; iter < iters; iter++) {
+  //   if (agg_iters>1) NCCLCHECK(ncclGroupStart());
+  //   for (int aiter = 0; aiter < agg_iters; aiter++) {
+  //     TESTCHECK(startColl(args, type, op, root, in_place, iter*agg_iters+aiter));
+  //   }
+  //   if (agg_iters>1) NCCLCHECK(ncclGroupEnd());
+  // }
+  // TESTCHECK(completeColl(args));
+
+  // mimic distributed training
   auto start = std::chrono::high_resolution_clock::now();
-  for (int iter = 0; iter < iters; iter++) {
-    if (agg_iters>1) NCCLCHECK(ncclGroupStart());
-    for (int aiter = 0; aiter < agg_iters; aiter++) {
-      TESTCHECK(startColl(args, type, op, root, in_place, iter*agg_iters+aiter));
+  // pair: time delay, nbytes to set
+  std::vector<std::pair<float, int>> _logs;
+  // faked logs
+  fakeLog(_logs);
+  // fake preset values
+  int nBatches = 3;
+  int nLayer = 2;
+  for (int bidx=0; bidx < nBatches; bidx ++){
+    auto bStart = std::chrono::high_resolution_clock::now();
+    
+    for (int lidx=0; lidx < nLayer; lidx ++) {
+      int eidx = bidx*nLayer + lidx;
+      std::pair<float, int> entry = _logs[eidx];
+      // mimic backward computation time
+      mimicBackward(entry.first, bStart);
+      setupArgs(entry.second, type, args);
     }
-    if (agg_iters>1) NCCLCHECK(ncclGroupEnd());
+    TESTCHECK(completeColl(args));
+    // Barrier(args);
+    auto bEnd = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::micro> elapsed = bEnd - bStart;
+    PRINT("collective ops cost %lf us\n", elapsed.count());
   }
-  TESTCHECK(completeColl(args));
 
   auto delta = std::chrono::high_resolution_clock::now() - start;
   double deltaSec = std::chrono::duration_cast<std::chrono::duration<double>>(delta).count();
@@ -500,13 +548,15 @@ testResult_t TimeTest(struct threadArgs* args, ncclDataType_t type, const char* 
   // TESTCHECK(completeColl(args));
 
   // Benchmark
-  for (size_t size = args->minbytes; size<=args->maxbytes; size = ((args->stepfactor > 1) ? size*args->stepfactor : size+args->stepbytes)) {
-      setupArgs(size, type, args);
-      print_line_header(max(args->sendBytes, args->expectedBytes), args->nbytes / wordSize(type), typeName, opName, root);
-      TESTCHECK(BenchTime(args, type, op, root, 0));
-      TESTCHECK(BenchTime(args, type, op, root, 1));
-      PRINT("\n");
-  }
+  // for (size_t size = args->minbytes; size<=args->maxbytes; size = ((args->stepfactor > 1) ? size*args->stepfactor : size+args->stepbytes)) {
+  //     setupArgs(size, type, args);
+  //     print_line_header(max(args->sendBytes, args->expectedBytes), args->nbytes / wordSize(type), typeName, opName, root);
+  //     TESTCHECK(BenchTime(args, type, op, root, 0));
+  //     TESTCHECK(BenchTime(args, type, op, root, 1));
+  //     PRINT("\n");
+  // }
+  PRINT("ncclDataType %d", type);
+  TESTCHECK(BenchTime(args, type, op, root, 0));
   return testSuccess;
 }
 
