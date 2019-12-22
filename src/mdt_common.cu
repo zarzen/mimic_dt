@@ -416,7 +416,7 @@ void mimicBackward(float interval,
   }
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::micro> sleepTime = end-start;
-  printf("Mimic backward interval: %lf", sleepTime.count());
+  printf("Mimic backward interval: %lf; actual sleep time %f \n", interval, sleepTime.count());
 }
 // declare setupArgs first
 void setupArgs(size_t size, ncclDataType_t type, struct threadArgs* args);
