@@ -415,6 +415,8 @@ void mimicBackward(float interval,
     if (dur.count() > interval) break;
   }
 }
+// declare setupArgs first
+void setupArgs(size_t size, ncclDataType_t type, struct threadArgs* args);
 
 testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t op, int root, int in_place) {
   size_t count = args->nbytes / wordSize(type);
