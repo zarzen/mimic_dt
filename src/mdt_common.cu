@@ -422,7 +422,7 @@ void mimicBackward(float interval,
 void setupArgs(size_t size, ncclDataType_t type, struct threadArgs* args);
 
 testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t op, int root, int in_place) {
-  size_t count = args->nbytes / wordSize(type);
+  // size_t count = args->nbytes / wordSize(type);
 
   // Sync
   // TESTCHECK(startColl(args, type, op, root, in_place, 0));
@@ -442,6 +442,7 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
   // TESTCHECK(completeColl(args));
 
   // mimic distributed training
+  size_t count = 0;
   auto start = std::chrono::high_resolution_clock::now();
   // pair: time delay, nbytes to set
   std::vector<std::pair<float, int>> _logs;
@@ -461,6 +462,7 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
       // mimic backward computation time
       mimicBackward(entry.first, bStart);
       setupArgs(entry.second, type, args);
+      PRINT("args sendBytes %lu; expectedBytes %lu \n", args->sendBytes, args->expectedBytes);
       TESTCHECK(startColl(args, type, op, root, in_place, eidx)); 
       bTime += entry.first;
       mSize += entry.second;
@@ -544,12 +546,11 @@ void setupArgs(size_t size, ncclDataType_t type, struct threadArgs* args) {
 
 testResult_t TimeTest(struct threadArgs* args, ncclDataType_t type, const char* typeName, ncclRedOp_t op, const char* opName, int root) {
   // Warm-up for large size
-  // delete warm-up
-  // setupArgs(args->maxbytes, type, args);
-  // for (int iter = 0; iter < warmup_iters; iter++) {
-  //   TESTCHECK(startColl(args, type, op, root, 0, iter));
-  // }
-  // TESTCHECK(completeColl(args));
+  setupArgs(args->maxbytes, type, args);
+  for (int iter = 0; iter < warmup_iters; iter++) {
+    TESTCHECK(startColl(args, type, op, root, 0, iter));
+  }
+  TESTCHECK(completeColl(args));
 
   // // Warm-up for small size
   // setupArgs(args->minbytes, type, args);
