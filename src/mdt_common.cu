@@ -447,21 +447,24 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
   // fake preset values
   int nBatches = 3;
   int nLayer = 2;
+  PRINT("\n");
   for (int bidx=0; bidx < nBatches; bidx ++){
     auto bStart = std::chrono::high_resolution_clock::now();
-    
+    float bTime = 0.0;
     for (int lidx=0; lidx < nLayer; lidx ++) {
       int eidx = bidx*nLayer + lidx;
       std::pair<float, int> entry = _logs[eidx];
       // mimic backward computation time
       mimicBackward(entry.first, bStart);
       setupArgs(entry.second, type, args);
+      TESTCHECK(startColl(args, type, op, root, in_place, eidx)); 
+      bTime += entry.first;
     }
     TESTCHECK(completeColl(args));
     // Barrier(args);
     auto bEnd = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::micro> elapsed = bEnd - bStart;
-    PRINT("collective ops cost %lf us\n", elapsed.count());
+    PRINT("collective ops cost %lf us; backward time %f \n", elapsed.count(), bTime);
   }
 
   auto delta = std::chrono::high_resolution_clock::now() - start;
