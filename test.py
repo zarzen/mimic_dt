@@ -1,5 +1,6 @@
 from pssh.clients.native.single import SSHClient
 import sys
+import psutil
 import subprocess
 
 class ExpCtl:
@@ -27,7 +28,13 @@ class ExpCtl:
     def run(self):
         """"""
         exp_cmd = "cd ~/mimic_dt; ./run.sh"
+        net_stat = psutil.net_io_counters()
         subprocess.run(exp_cmd, shell=True)
+        net_after = psutil.net_io_counters()
+        print('recv {} bytes; sent {} bytes'.format(
+            net_after.bytes_recv - net_stat.bytes_recv,
+            net_after.bytes_sent - net_stat.bytes_sent
+        ))
     
     def _exe_cmd(self, client, cmd):
         _channel, _host, stdout, stderr, stdin = client.run_command(cmd)

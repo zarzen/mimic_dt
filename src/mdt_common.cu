@@ -397,14 +397,12 @@ testResult_t completeColl(struct threadArgs* args) {
 
 void fakeLog(std::vector<std::pair<float, int>>& log) {
   // put some fake logs
-  log.push_back(std::make_pair(0.0, 4000));
-  log.push_back(std::make_pair(10.0, 8192000));
-  
-  log.push_back(std::make_pair(0.0, 4000));
-  log.push_back(std::make_pair(15.0, 8192000)); 
-
-  log.push_back(std::make_pair(0.0, 4000));
-  log.push_back(std::make_pair(20.0, 8192000));
+  int nBatch = 200;
+  for (int b=0; b < nBatch; b++) {
+    log.push_back(std::make_pair(0.0, 4096000));
+    log.push_back(std::make_pair(200.0, 8192000));
+    log.push_back(std::make_pair(100.0, 1024000));
+  }
 }
 
 void mimicBackward(float interval, 
@@ -449,8 +447,8 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
   // faked logs
   fakeLog(_logs);
   // fake preset values
-  int nBatches = 3;
-  int nLayer = 2;
+  int nBatches = 200;
+  int nLayer = 3;
   PRINT("\n");
   for (int bidx=0; bidx < nBatches; bidx ++){
     auto bStart = std::chrono::high_resolution_clock::now();
@@ -474,6 +472,8 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
     PRINT("model size %d bytes; collective ops cost %lf us; backward time %f \n", 
       mSize, elapsed.count(), bTime);
   }
+
+  TESTCHECK(completeColl(args));
 
   auto delta = std::chrono::high_resolution_clock::now() - start;
   double deltaSec = std::chrono::duration_cast<std::chrono::duration<double>>(delta).count();
