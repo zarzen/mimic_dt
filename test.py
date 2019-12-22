@@ -20,12 +20,14 @@ class ExpCtl:
                 clone_cmd = "cd ~; git clone git@github.com:zarzen/mimic_dt.git"
                 self._exe_cmd(c, clone_cmd)
             else:
-                print(output[1].decode('utf-8'))
+                pull_cmd = "cd ~/mimic_dt; git pull"
+                self._exe_cmd(c, pull_cmd)
+                print("updated")
     
     def run(self):
         """"""
         exp_cmd = "cd ~/mimic_dt; ./run.sh"
-        subprocess.run(exp_cmd)
+        subprocess.run(exp_cmd, shell=True)
     
     def _exe_cmd(self, client, cmd):
         _channel, _host, stdout, stderr, stdin = client.run_command(cmd)

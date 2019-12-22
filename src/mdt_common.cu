@@ -398,10 +398,10 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
   size_t count = args->nbytes / wordSize(type);
 
   // Sync
-  TESTCHECK(startColl(args, type, op, root, in_place, 0));
-  TESTCHECK(completeColl(args));
+  // TESTCHECK(startColl(args, type, op, root, in_place, 0));
+  // TESTCHECK(completeColl(args));
 
-  Barrier(args);
+  // Barrier(args);
 
   // Performance Benchmark
   auto start = std::chrono::high_resolution_clock::now();
