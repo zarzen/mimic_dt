@@ -405,8 +405,8 @@ void fakeLog(std::vector<std::pair<float, int>>& log) {
   }
 }
 
-void mimicBackward(float interval, 
-                    std::chrono::time_point<std::chrono::high_resolution_clock>& start) {
+void mimicBackward(float interval) {
+  auto start = std::chrono::high_resolution_clock::now();
   // sleep in microseconds
   while (1) {
     std::chrono::duration<double, std::micro> dur = std::chrono::high_resolution_clock::now() - start;
@@ -458,7 +458,7 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
       int eidx = bidx*nLayer + lidx;
       std::pair<float, int> entry = _logs[eidx];
       // mimic backward computation time
-      mimicBackward(entry.first, bStart);
+      mimicBackward(entry.first);
       setupArgs(entry.second, type, args);
       PRINT("args sendBytes %lu; expectedBytes %lu \n", args->sendBytes, args->expectedBytes);
       TESTCHECK(startColl(args, type, op, root, in_place, eidx)); 
