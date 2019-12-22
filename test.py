@@ -1,5 +1,6 @@
 from pssh.clients.native.single import SSHClient
 import sys
+import subprocess
 
 class ExpCtl:
     
@@ -24,7 +25,7 @@ class ExpCtl:
     def run(self):
         """"""
         exp_cmd = "cd ~/mimic_dt; ./run.sh"
-        self._exe_cmd(self.clients[0], exp_cmd)
+        subprocess.run(exp_cmd)
     
     def _exe_cmd(self, client, cmd):
         _channel, _host, stdout, stderr, stdin = client.run_command(cmd)
@@ -35,9 +36,15 @@ class ExpCtl:
         
     def build(self):
         """"""
+        self.update()
         build_cmd = "cd ~/mimic_dt; ./build.sh"
         for c in self.clients:
             self._exe_cmd(c, build_cmd)
+    
+    def __del__(self):
+        kill_proc = "kill -9 $(nvidia-smi | sed -n 's/|\s*[0-9]*\s*\([0-9]*\)\s*.*/\1/p' | sort | uniq | sed '/^$/d')"
+        for c in self.clients:
+            self._exe_cmd(c, kill_proc)
         
 def main():
     hosts = ['localhost', "172.31.29.187"]

@@ -485,18 +485,19 @@ void setupArgs(size_t size, ncclDataType_t type, struct threadArgs* args) {
 
 testResult_t TimeTest(struct threadArgs* args, ncclDataType_t type, const char* typeName, ncclRedOp_t op, const char* opName, int root) {
   // Warm-up for large size
-  setupArgs(args->maxbytes, type, args);
-  for (int iter = 0; iter < warmup_iters; iter++) {
-    TESTCHECK(startColl(args, type, op, root, 0, iter));
-  }
-  TESTCHECK(completeColl(args));
+  // delete warm-up
+  // setupArgs(args->maxbytes, type, args);
+  // for (int iter = 0; iter < warmup_iters; iter++) {
+  //   TESTCHECK(startColl(args, type, op, root, 0, iter));
+  // }
+  // TESTCHECK(completeColl(args));
 
-  // Warm-up for small size
-  setupArgs(args->minbytes, type, args);
-  for (int iter = 0; iter < warmup_iters; iter++) {
-    TESTCHECK(startColl(args, type, op, root, 0, iter));
-  }
-  TESTCHECK(completeColl(args));
+  // // Warm-up for small size
+  // setupArgs(args->minbytes, type, args);
+  // for (int iter = 0; iter < warmup_iters; iter++) {
+  //   TESTCHECK(startColl(args, type, op, root, 0, iter));
+  // }
+  // TESTCHECK(completeColl(args));
 
   // Benchmark
   for (size_t size = args->minbytes; size<=args->maxbytes; size = ((args->stepfactor > 1) ? size*args->stepfactor : size+args->stepbytes)) {
