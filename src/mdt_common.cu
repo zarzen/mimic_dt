@@ -11,6 +11,10 @@
 #include <libgen.h>
 #include "cuda.h"
 #include <vector>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
 #if NCCL_MAJOR >= 2
 ncclDataType_t test_types[ncclNumTypes] = {ncclInt8, ncclUint8, ncclInt32, ncclUint32, ncclInt64, ncclUint64, ncclHalf, ncclFloat, ncclDouble};
@@ -40,6 +44,7 @@ static int nccltype = ncclFloat;
 static int ncclroot = 0;
 static int parallel_init = 0;
 static int blocking_coll = 0;
+static std::string backward_log_path = "";
 
 double parsesize(char *value) {
     long long int units;
@@ -405,6 +410,40 @@ void fakeLog(std::vector<std::pair<float, int>>& log) {
   }
 }
 
+std::pair<int, int> readLog(std::vector<std::pair<float, int>>& log) {
+  // read in from backward_log
+  if (backward_log_path.empty()) {
+    std::cout << "no backward log file specified\n";
+    return std::make_pair(0, 0);
+  }
+  std::ifstream infile(backward_log_path);
+  if (!infile.good()) {
+    std::cout << "\n open file " << backward_log_path << " error\n";
+    return std::make_pair(0, 0); 
+  }
+  std::string line;
+  std::getline(infile, line); // first line is comment
+  std::cout << line << '\n';
+
+  std::getline(infile, line);
+  int nBatch = std::stoi(line);
+  std::getline(infile, line);
+  int nLayer = std::stoi(line);
+  int lc = 0;
+  while (std::getline(infile, line)) {
+    std::istringstream s(line);
+    std::string field;
+    getline(s, field, ',');
+    float interval = std::stof(field);
+    getline(s, field, ',');
+    int nBytes = std::stoi(field);
+    log.push_back(std::make_pair(interval, nBytes));
+    lc ++;
+  }
+  std::cout << "parsed " << lc << " lines\n";
+  return std::make_pair(nBatch, nLayer);
+}
+
 void mimicBackward(float interval) {
   auto start = std::chrono::high_resolution_clock::now();
   // sleep in microseconds
@@ -445,10 +484,11 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
   // pair: time delay, nbytes to set
   std::vector<std::pair<float, int>> _logs;
   // faked logs
-  fakeLog(_logs);
+  // fakeLog(_logs);
+  auto ret = readLog(_logs);
   // fake preset values
-  int nBatches = 200;
-  int nLayer = 3;
+  int nBatches = ret.first;
+  int nLayer = ret.second;
   PRINT("\n");
   for (int bidx=0; bidx < nBatches; bidx ++){
     auto bStart = std::chrono::high_resolution_clock::now();
@@ -633,6 +673,7 @@ int main(int argc, char* argv[]) {
   // Parse args
   int longindex;
   static struct option longopts[] = {
+    {"backward_log", required_argument, 0, 'l'},
     {"nthreads", required_argument, 0, 't'},
     {"ngpus", required_argument, 0, 'g'},
     {"minbytes", required_argument, 0, 'b'},
@@ -653,12 +694,16 @@ int main(int argc, char* argv[]) {
 
   while(1) {
     int c;
-    c = getopt_long(argc, argv, "t:g:b:e:i:f:n:m:w:p:c:o:d:r:z:h", longopts, &longindex);
+    c = getopt_long(argc, argv, "l:t:g:b:e:i:f:n:m:w:p:c:o:d:r:z:h", longopts, &longindex);
 
     if (c == -1)
       break;
 
     switch(c) {
+      case 'l':
+        backward_log_path = std::string(optarg);
+        // std::cout << backward_log_path << "\n";
+        break;
       case 't':
         nThreads = strtol(optarg, NULL, 0);
         break;
@@ -710,6 +755,7 @@ int main(int argc, char* argv[]) {
         break;
       case 'h':
 	printf("USAGE: %s \n\t"
+            "[-l,--backward_log <log path>] \n\t"
             "[-t,--nthreads <num threads>] \n\t"
             "[-g,--ngpus <gpus per thread>] \n\t"
             "[-b,--minbytes <min size in bytes>] \n\t"
@@ -728,9 +774,11 @@ int main(int argc, char* argv[]) {
             "[-h,--help]\n",
 	    basename(argv[0]));
 	return 0;
+      
       default:
         printf("invalid option \n");
 	printf("USAGE: %s \n\t"
+            "[-l,--backward_log <log path>] \n\t"
             "[-t,--nthreads <num threads>] \n\t"
             "[-g,--ngpus <gpus per thread>] \n\t"
             "[-b,--minbytes <min size in bytes>] \n\t"
