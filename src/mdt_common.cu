@@ -453,7 +453,7 @@ void mimicBackward(float interval) {
   }
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::micro> sleepTime = end-start;
-  printf("Mimic backward interval: %lf; actual sleep time %f \n", interval, sleepTime.count());
+  // printf("Mimic backward interval: %lf; actual sleep time %f \n", interval, sleepTime.count());
 }
 // declare setupArgs first
 void setupArgs(size_t size, ncclDataType_t type, struct threadArgs* args);
@@ -500,7 +500,7 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
       // mimic backward computation time
       mimicBackward(entry.first);
       setupArgs(entry.second, type, args);
-      PRINT("args sendBytes %lu; expectedBytes %lu \n", args->sendBytes, args->expectedBytes);
+      // PRINT("args sendBytes %lu; expectedBytes %lu \n", args->sendBytes, args->expectedBytes);
       TESTCHECK(startColl(args, type, op, root, in_place, eidx)); 
       bTime += entry.first;
       mSize += entry.second;
