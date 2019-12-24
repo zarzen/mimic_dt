@@ -1,6 +1,7 @@
-# NCCL Tests
+# Mimic Distributed training
 
-These tests check both the performance and the correctness of [NCCL](http://github.com/nvidia/nccl) operations.
+Start allreduce operation right after gradient computation done. (rely on 
+backward hook log)
 
 ## Build
 
@@ -24,14 +25,9 @@ NCCL tests can run on multiple processes, multiple threads, and multiple CUDA de
 
 ### Quick examples
 
-Run on 8 GPUs (`-g 8`), scanning from 8 Bytes to 128MBytes :
-```shell
-$ ./build/all_reduce_perf -b 8 -e 128M -f 2 -g 8
-```
-
 Run with MPI on 40 processes (potentially on multiple nodes) with 4 GPUs each :
 ```shell
-$ mpirun -np 40 ./build/all_reduce_perf -b 8 -e 128M -f 2 -g 4
+$ mpirun -np 40 ./build/all_reduce_perf -b 8 -e 128M -f 2 -g 4 -l log_file.txt
 ```
 
 ### Performance
@@ -41,6 +37,9 @@ See the [Performance](doc/PERFORMANCE.md) page for explanation about numbers, an
 ### Arguments
 
 All tests support the same set of arguments :
+
+* Backward log path
+  * `-l, --backward_log <abs log path>` absolute log path. No default value.
 
 * Number of GPUs
   * `-t,--nthreads <num threads>` number of threads per process. Default : 1.

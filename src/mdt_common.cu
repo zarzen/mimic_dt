@@ -417,7 +417,9 @@ std::string getDirname(std::string& path) {
 }
 
 void initOutLogger(const std::string& dirname) {
-  logfile.open(dirname + "mimic_timing.log");
+  std::string filepath = dirname + "/mimic_timing.log";
+  std::cout << "openning file " << filepath << "\n";
+  logfile.open(filepath);
 }
 
 void closeLogger() {
@@ -526,7 +528,7 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
     std::chrono::duration<double, std::micro> elapsed = bEnd - bStart;
     PRINT("model size %d bytes; collective ops cost %lf us; backward time %f \n", 
       mSize, elapsed.count(), bTime);
-    if (is_main_thread) {logfile << mSize << "," << elapsed.count() << "\n";}
+    if (is_main_thread) { logfile << mSize << "," << elapsed.count() << "\n";}
   }
 
   TESTCHECK(completeColl(args));
