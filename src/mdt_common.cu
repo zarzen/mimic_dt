@@ -45,6 +45,7 @@ static int ncclroot = 0;
 static int parallel_init = 0;
 static int blocking_coll = 0;
 static std::string backward_log_path = "";
+static std::ofstream logfile;
 
 double parsesize(char *value) {
     long long int units;
@@ -410,6 +411,19 @@ void fakeLog(std::vector<std::pair<float, int>>& log) {
   }
 }
 
+std::string getDirname(std::string& path) {
+  auto found = path.find_last_of("/\\");
+  return path.substr(0, found);
+}
+
+void initOutLogger(const std::string& dirname) {
+  logfile.open(dirname + "mimic_timing.log");
+}
+
+void closeLogger() {
+  logfile.close();
+}
+
 std::pair<int, int> readLog(std::vector<std::pair<float, int>>& log) {
   // read in from backward_log
   if (backward_log_path.empty()) {
@@ -490,6 +504,7 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
   int nBatches = ret.first;
   int nLayer = ret.second;
   PRINT("\n");
+  if (is_main_thread) { initOutLogger(getDirname(backward_log_path)); }
   for (int bidx=0; bidx < nBatches; bidx ++){
     auto bStart = std::chrono::high_resolution_clock::now();
     float bTime = 0.0;
@@ -511,9 +526,11 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
     std::chrono::duration<double, std::micro> elapsed = bEnd - bStart;
     PRINT("model size %d bytes; collective ops cost %lf us; backward time %f \n", 
       mSize, elapsed.count(), bTime);
+    if (is_main_thread) {logfile << mSize << "," << elapsed.count() << "\n";}
   }
 
   TESTCHECK(completeColl(args));
+  if (is_main_thread) {closeLogger();}
 
   auto delta = std::chrono::high_resolution_clock::now() - start;
   double deltaSec = std::chrono::duration_cast<std::chrono::duration<double>>(delta).count();
