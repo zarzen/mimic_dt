@@ -532,7 +532,7 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
       }
     }
     TESTCHECK(completeColl(args));
-    Barrier(args);
+    // Barrier(args);
     auto bEnd = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::micro> elapsed = bEnd - bStart;
     PRINT("model size %d bytes; collective ops cost %lf us; backward time %f \n", 
