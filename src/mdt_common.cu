@@ -505,22 +505,31 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
   // fake preset values
   int nBatches = ret.first;
   int nLayer = ret.second;
+  float timeout = 5*1000; // 5ms
+  int buff_size = 64 * 1024 * 1024; // 64MB fusion buffer
   PRINT("\n");
   if (is_main_thread) { initOutLogger(getDirname(backward_log_path)); }
   for (int bidx=0; bidx < nBatches; bidx ++){
     auto bStart = std::chrono::high_resolution_clock::now();
     float bTime = 0.0;
     int mSize = 0;
+    float accTime = 0.0; // accumulated backward time
+    int accBuff = 0; // accumulated buffer size
     for (int lidx=0; lidx < nLayer; lidx ++) {
       int eidx = bidx*nLayer + lidx;
       std::pair<float, int> entry = _logs[eidx];
       // mimic backward computation time
       mimicBackward(entry.first);
-      setupArgs(entry.second, type, args);
-      // PRINT("args sendBytes %lu; expectedBytes %lu \n", args->sendBytes, args->expectedBytes);
-      TESTCHECK(startColl(args, type, op, root, in_place, eidx)); 
-      bTime += entry.first;
-      mSize += entry.second;
+      accTime += entry.first;
+      accBuff += entry.second;
+      if (accTime >= timeout || accBuff >= buff_size) {
+        setupArgs(accBuff, type, args);
+        TESTCHECK(startColl(args, type, op, root, in_place, eidx));
+        bTime += accTime;
+        mSize += accBuff;
+        accTime = 0;
+        accBuff = 0;
+      }
     }
     TESTCHECK(completeColl(args));
     Barrier(args);
