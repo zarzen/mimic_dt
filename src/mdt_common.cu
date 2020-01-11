@@ -531,6 +531,15 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
         accBuff = 0;
       }
     }
+    if (accBuff > 0) {
+      int eidx = bidx*nLayer + nLayer;
+      setupArgs(accBuff, type, args);
+      TESTCHECK(startColl(args, type, op, root, in_place, eidx));
+      bTime += accTime;
+      mSize += accBuff;
+      accTime = 0;
+      accBuff = 0; 
+    }
     TESTCHECK(completeColl(args));
     // Barrier(args);
     auto bEnd = std::chrono::high_resolution_clock::now();
